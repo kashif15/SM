@@ -125,20 +125,122 @@ public class EmployeeShiftController {
     }
 
     @PutMapping("/update/oncall/{employeeName}")
-    public ResponseEntity<EmployeeShift> updateOnCallShift(HttpServletRequest request, @PathVariable String employeeName, @RequestParam("department") String department, @RequestParam String month, @RequestParam int year, @RequestParam String date, @RequestParam String shiftType) {
+    public ResponseEntity<EmployeeShift> updateOnCallShift(HttpServletRequest request, @PathVariable String employeeName, @RequestParam("department") String department, @RequestParam String month, @RequestParam int year, @RequestParam String date, @RequestParam double hoursWorked) {
         if (!isAuthorized(request, department)) {
             return ResponseEntity.status(403).build();
         }
-        EmployeeShift updatedShift = employeeShiftService.updateOnCallShift(employeeName, month, year, date, shiftType, department);
+        EmployeeShift updatedShift = employeeShiftService.updateOnCallShift(employeeName, month, year, date, hoursWorked, department);
         return ResponseEntity.ok(updatedShift);
     }
 
     @PutMapping("/update/workOff/{employeeName}")
-    public ResponseEntity<EmployeeShift> updateWorkOffShift(HttpServletRequest request, @PathVariable String employeeName, @RequestParam("department") String department, @RequestParam String month, @RequestParam int year, @RequestParam String date, @RequestParam String shiftType) {
+    public ResponseEntity<EmployeeShift> updateWorkOffShift(HttpServletRequest request, @PathVariable String employeeName, @RequestParam("department") String department, @RequestParam String month, @RequestParam int year, @RequestParam String date, @RequestParam double hoursWorked) {
         if (!isAuthorized(request, department)) {
             return ResponseEntity.status(403).build();
         } 
-        EmployeeShift updatedShift = employeeShiftService.updateWorkOffShift(employeeName, month, year, date, shiftType, department);
+        EmployeeShift updatedShift = employeeShiftService.updateWorkOffShift(employeeName, month, year, date, hoursWorked, department);
+        return ResponseEntity.ok(updatedShift);
+    }
+    
+    @PutMapping("/update/pl/{employeeName}")
+    public ResponseEntity<EmployeeShift> updatePlannedLeave(
+            HttpServletRequest request,
+            @PathVariable String employeeName,
+            @RequestParam("department") String department,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("date") String leaveDate) {
+        
+        if (!isAuthorized(request, department)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        EmployeeShift updatedShift = employeeShiftService.updatePlannedLeaveCount(employeeName, month, year, leaveDate, department);
+        return ResponseEntity.ok(updatedShift);
+    }
+    
+    @PutMapping("/update/upl/{employeeName}")
+    public ResponseEntity<EmployeeShift> updateUnplannedLeave(
+            HttpServletRequest request,
+            @PathVariable String employeeName,
+            @RequestParam("department") String department,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("date") String leaveDate) {
+        
+        if (!isAuthorized(request, department)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        EmployeeShift updatedShift = employeeShiftService.updateUnplannedLeaveCount(employeeName, month, year, leaveDate, department);
+        return ResponseEntity.ok(updatedShift);
+    }
+    
+    @PutMapping("/update/subs/{employeeName}")
+    public ResponseEntity<EmployeeShift> updateSubRestDays(
+            HttpServletRequest request,
+            @PathVariable String employeeName,
+            @RequestParam("department") String department,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("date") String leaveDate) {
+        
+        if (!isAuthorized(request, department)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        EmployeeShift updatedShift = employeeShiftService.updateSubRestDays(employeeName, month, year, leaveDate, department);
+        return ResponseEntity.ok(updatedShift);
+    }
+
+    @PutMapping("/update/general/{employeeName}")
+    public ResponseEntity<EmployeeShift> updateGeneralShift(
+            HttpServletRequest request,
+            @PathVariable String employeeName,
+            @RequestParam("department") String department,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("count") int generalCount) {
+        
+        if (!isAuthorized(request, department)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        EmployeeShift updatedShift = employeeShiftService.updateGeneralCount(employeeName, month, year, generalCount, department);
+        return ResponseEntity.ok(updatedShift);
+    }
+
+    @PutMapping("/update/bill/{employeeName}")
+    public ResponseEntity<EmployeeShift> updateAllowanceBillable(
+            HttpServletRequest request,
+            @PathVariable String employeeName,
+            @RequestParam("department") String department,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("billable") String allowanceBillable) {
+        
+        if (!isAuthorized(request, department)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        EmployeeShift updatedShift = employeeShiftService.updateAllowanceBillable(employeeName, month, year, allowanceBillable, department);
+        return ResponseEntity.ok(updatedShift);
+    }
+
+    @PutMapping("/update/comment/{employeeName}")
+    public ResponseEntity<EmployeeShift> updateComment(
+            HttpServletRequest request,
+            @PathVariable String employeeName,
+            @RequestParam("department") String department,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("comment") String comment) {
+        
+        if (!isAuthorized(request, department)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        EmployeeShift updatedShift = employeeShiftService.updateComment(employeeName, month, year, comment, department);
         return ResponseEntity.ok(updatedShift);
     }
 

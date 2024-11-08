@@ -1,8 +1,11 @@
 package com.example.shiftmanagement.model;
 
 import jakarta.persistence.*;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 public class EmployeeShift {
@@ -15,10 +18,17 @@ public class EmployeeShift {
     private int nightShiftCount;
     private double totalMoney;
     private int sundayCount;
-    private int onCallCount;
-    private int workOffCount;
+    private double onCallCount;
+    private double workOffCount;
     private String month;
     private int year;
+    private String holiday;
+    private int plannedLeave;
+    private int unplannedLeave;
+    private int general;
+    private int workingDays;
+    private String allowanceBillable;
+    private String comment;
 
     @ManyToOne
     @JoinColumn(name = "employee_id")
@@ -38,13 +48,28 @@ public class EmployeeShift {
     @CollectionTable(name = "employee_on_call_shifts", joinColumns = @JoinColumn(name = "employee_shift_id"))  // New table for on-call shifts
     @MapKeyColumn(name = "date")
     @Column(name = "shift_type")
-    private Map<String, String> onCallShifts = new HashMap<>();
+    private Map<String, Double> onCallShifts = new HashMap<>();
     
     @ElementCollection
     @CollectionTable(name = "employee_work_off_shifts", joinColumns = @JoinColumn(name = "employee_shift_id"))
     @MapKeyColumn(name = "date")
     @Column(name = "shift_type")
-    private Map<String, String> workOffShifts = new HashMap<>();
+    private Map<String, Double> workOffShifts = new HashMap<>();
+    
+    @ElementCollection
+    @CollectionTable(name = "employee_planned_leaves", joinColumns = @JoinColumn(name = "employee_shift_id"))
+    @Column(name = "leave_date")
+    private Set<String> plannedLeaveDates = new HashSet<>();
+
+    @ElementCollection
+    @CollectionTable(name = "employee_unplanned_leaves", joinColumns = @JoinColumn(name = "employee_shift_id"))
+    @Column(name = "leave_date")
+    private Set<String> unplannedLeaveDates = new HashSet<>();
+    
+    @ElementCollection
+    @CollectionTable(name = "employee_sub_restdays", joinColumns = @JoinColumn(name = "employee_shift_id"))
+    @Column(name = "leave_date")
+    private Set<String> subRestDays = new HashSet<>();
     
     // Getters and Setters
 
@@ -104,35 +129,35 @@ public class EmployeeShift {
         this.sundayShifts = sundayShifts;
     }
     
-    public int getOnCallCount() {
+    public double getOnCallCount() {
         return onCallCount;
     }
 
-    public void setOnCallCount(int onCallCount) {
+    public void setOnCallCount(double onCallCount) {
         this.onCallCount = onCallCount;
     }
 
-    public Map<String, String> getOnCallShifts() {
+    public Map<String, Double> getOnCallShifts() {
         return onCallShifts;
     }
 
-    public void setOnCallShifts(Map<String, String> onCallShifts) {
+    public void setOnCallShifts(Map<String, Double> onCallShifts) {
         this.onCallShifts = onCallShifts;
     }
     
-    public int getWorkOffCount() {
+    public double getWorkOffCount() {
         return workOffCount;
     }
 
-    public void setWorkOffCount(int workOffCount) {
+    public void setWorkOffCount(double workOffCount) {
         this.workOffCount = workOffCount;
     }
     
-    public Map<String, String> getWorkOffShifts() {
+    public Map<String, Double> getWorkOffShifts() {
         return workOffShifts;
     }
 
-    public void setWorkOffShifts(Map<String, String> workOffShifts) {
+    public void setWorkOffShifts(Map<String, Double> workOffShifts) {
         this.workOffShifts = workOffShifts;
     }
 
@@ -167,4 +192,86 @@ public class EmployeeShift {
     public void setDepartment(Department department) {
         this.department = department;
     }
+
+	public String getHoliday() {
+		return holiday;
+	}
+
+	public void setHoliday(String holiday) {
+		this.holiday = holiday;
+	}
+
+	public int getPlannedLeave() {
+		return plannedLeave;
+	}
+
+	public void setPlannedLeave(int plannedLeave) {
+		this.plannedLeave = plannedLeave;
+	}
+
+	public int getUnplannedLeave() {
+		return unplannedLeave;
+	}
+
+	public void setUnplannedLeave(int unplannedLeave) {
+		this.unplannedLeave = unplannedLeave;
+	}
+
+	public int getGeneral() {
+		return general;
+	}
+
+	public void setGeneral(int general) {
+		this.general = general;
+	}
+
+	public int getWorkingDays() {
+		return workingDays;
+	}
+
+	public void setWorkingDays(int workingDays) {
+		this.workingDays = workingDays;
+	}
+
+	public String getAllowanceBillable() {
+		return allowanceBillable;
+	}
+
+	public void setAllowanceBillable(String allowanceBillable) {
+		this.allowanceBillable = allowanceBillable;
+	}
+
+	public String getComment() {
+		return comment;
+	}
+
+	public void setComment(String comment) {
+		this.comment = comment;
+	}
+
+	public Set<String> getPlannedLeaveDates() {
+		return plannedLeaveDates;
+	}
+
+	public void setPlannedLeaveDates(Set<String> plannedLeaveDates) {
+		this.plannedLeaveDates = plannedLeaveDates;
+	}
+
+	public Set<String> getUnplannedLeaveDates() {
+		return unplannedLeaveDates;
+	}
+
+	public void setUnplannedLeaveDates(Set<String> unplannedLeaveDates) {
+		this.unplannedLeaveDates = unplannedLeaveDates;
+	}
+
+	public Set<String> getSubRestDays() {
+		return subRestDays;
+	}
+
+	public void setSubRestDays(Set<String> subRestDays) {
+		this.subRestDays = subRestDays;
+	}
+    
+    
 }

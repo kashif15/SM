@@ -55,7 +55,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 ImmutableUserDetails customDetails = (ImmutableUserDetails) userDetails;
 
                 if (customDetails.canAccessDepartment(tokenDepartment)) {
-                	 logger.info("Access granted to user: " + username + " for department: " + tokenDepartment);
+                	 
                     UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     usernamePasswordAuthenticationToken

@@ -35,7 +35,7 @@ public class AuthController {
             );
             System.out.println("Authentication successful for user: " + authRequest.getUsername());
         } catch (BadCredentialsException e) {
-            System.out.println("Authentication failed for user: " + authRequest.getUsername());
+             System.out.println("Authentication failed for user: " + authRequest.getUsername());
             throw new Exception("Incorrect username or password", e);
         }
 

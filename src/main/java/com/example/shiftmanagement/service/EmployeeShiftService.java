@@ -42,6 +42,8 @@ public class EmployeeShiftService {
             "Afternoon- 11:30 AM to 9 PM IST", "Night - 8 PM to 5:30 AM IST"
     );
 
+    private static final List<String> Holiday_Date = Arrays.asList("26-Jan","1-May", "15-Aug", "2-Oct");
+    
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("d-MMM");
 
     @Transactional
@@ -96,6 +98,10 @@ public class EmployeeShiftService {
                 employeeShift.setDepartment(department);
                 int morningShiftCount = 0, afternoonShiftCount = 0, nightShiftCount = 0;
                 int sundayCount = 0;
+                int plannedLeave = 0;
+                int unplannedLeave = 0;
+                int general = 0;
+                
                 Map<String, String> sundayShifts = new HashMap<>();
 
                 boolean hasValidShift = false; // Flag to check for valid shifts
@@ -104,20 +110,25 @@ public class EmployeeShiftService {
                     Cell cell = row.getCell(i);
                     if (cell != null && cell.getCellType() == CellType.STRING) {
                         String shiftType = cell.getStringCellValue().trim();
+                        
+                        String dateStr = getCellStringValue(datesRow.getCell(i));
+                        String dayName = getCellStringValue(dayNamesRow.getCell(i));
+
+                        
+                        boolean isWeekend = "Sat".equals(dayName) || "Sun".equals(dayName);
+                        
                         if (VALID_SHIFT_CODES.contains(shiftType)) {
-                            hasValidShift = true; // Mark as valid shift
+                            hasValidShift = true; 
 
-                            // Get the date and day name from the header
-                            String dateStr = getCellStringValue(datesRow.getCell(i));
-                            String dayName = getCellStringValue(dayNamesRow.getCell(i));
-
-                            // Check if the day is a weekend
-                            boolean isWeekend = "Sat".equals(dayName) || "Sun".equals(dayName);
+                            
                             if ("Sun".equals(dayName)) {
                                 sundayCount++;
                                 sundayShifts.put(dateStr, shiftType);
                             }
-                            if (!isWeekend) {
+                            
+                            if(Holiday_Date.contains(dateStr)) {
+                            	employeeShift.setHoliday(dateStr);
+                            } else if (!isWeekend) {
                                 switch (shiftType) {
                                     case "M":
                                         morningShiftCount++;
@@ -130,7 +141,31 @@ public class EmployeeShiftService {
                                         break;
                                 }
                             }
+                        }else {
+                        	
+                        	switch(shiftType) {
+                        	case "P":
+                        		employeeShift.getPlannedLeaveDates().add(dateStr);
+                        		plannedLeave++;
+                        		break;
+                        	case "U":
+                        		employeeShift.getUnplannedLeaveDates().add(dateStr);
+                        		unplannedLeave++;
+                        		break;
+                        	case "C":
+                        		if(!isWeekend) {
+                        			general++;
+                        		}
+                        		break;
+                        	case "G":
+                        		if(!isWeekend) {
+                        			general++;
+                        		}
+                        		break;
+                        	}
+                        	
                         }
+
                     }
                 }
 
@@ -141,12 +176,17 @@ public class EmployeeShiftService {
                 double afternoonRate = getRateForShift("Afternoon");
                 double nightRate = getRateForShift("Night");
                 double totalMoney = (morningShiftCount * morningRate) + (afternoonShiftCount * afternoonRate) + (nightShiftCount * nightRate);
+                int workingDays = morningShiftCount + afternoonShiftCount + nightShiftCount + plannedLeave + unplannedLeave + general;
                 employeeShift.setMorningShiftCount(morningShiftCount);
                 employeeShift.setAfternoonShiftCount(afternoonShiftCount);
                 employeeShift.setNightShiftCount(nightShiftCount);
                 employeeShift.setTotalMoney(totalMoney);
                 employeeShift.setSundayCount(sundayCount);
                 employeeShift.setSundayShifts(sundayShifts);
+                employeeShift.setPlannedLeave(plannedLeave);
+                employeeShift.setUnplannedLeave(unplannedLeave);
+                employeeShift.setGeneral(general);
+                employeeShift.setWorkingDays(workingDays);
                 employeeShifts.add(employeeShift);
             }
             employeeShiftRepository.saveAll(employeeShifts);
@@ -294,7 +334,7 @@ public class EmployeeShiftService {
 
     
     @Transactional
-    public EmployeeShift updateOnCallShift(String employeeName, String month, int year, String date, String shiftType, String departmentName) {
+    public EmployeeShift updateOnCallShift(String employeeName, String month, int year, String date, double hoursWorked, String departmentName) {
         List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
 
         if (employeeShifts.isEmpty()) {
@@ -302,16 +342,30 @@ public class EmployeeShiftService {
         }
 
         EmployeeShift employeeShift = employeeShifts.get(0);
-        Map<String, String> onCallShifts = employeeShift.getOnCallShifts();
-        onCallShifts.put(date, shiftType);
-        employeeShift.setOnCallCount(onCallShifts.size());
+        Map<String, Double> onCallShifts = employeeShift.getOnCallShifts();
+
+        // Update the on-call shift for the given date with hours worked
+        onCallShifts.put(date, hoursWorked);
+        
+        // Recalculate the on-call count based on the hours worked
+        double newOnCall = 0;
+        for (Double hours : onCallShifts.values()) {
+            if (hours > 2 && hours < 5) {
+                newOnCall += 0.5;
+            } else if (hours >= 5) {
+                newOnCall += 1;
+            }
+        }
+
+        employeeShift.setOnCallCount(newOnCall);
+
         return employeeShiftRepository.save(employeeShift);
     }
 
 
     
     @Transactional
-    public EmployeeShift updateWorkOffShift(String employeeName, String month, int year, String date, String shiftType, String departmentName) {
+    public EmployeeShift updateWorkOffShift(String employeeName, String month, int year, String date, double hoursWorked, String departmentName) {
         List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
 
         if (employeeShifts.isEmpty()) {
@@ -319,14 +373,111 @@ public class EmployeeShiftService {
         }
 
         EmployeeShift employeeShift = employeeShifts.get(0);
-        Map<String, String> workOffShifts = employeeShift.getWorkOffShifts();
-        workOffShifts.put(date, shiftType);
-        employeeShift.setWorkOffCount(workOffShifts.size());
+        Map<String, Double> workOffShifts = employeeShift.getWorkOffShifts();
+
+        // Update the work-off shift for the given date with hours worked
+        workOffShifts.put(date, hoursWorked);
+
+        // Recalculate the work-off count based on the hours worked
+        double newWorkOff = 0;
+        for (Double hours : workOffShifts.values()) {
+            if (hours > 2 && hours < 5) {
+                newWorkOff += 0.5;
+            } else if (hours >= 5) {
+                newWorkOff += 1;
+            }
+        }
+
+        employeeShift.setWorkOffCount(newWorkOff);
 
         return employeeShiftRepository.save(employeeShift);
     }
+    
+    @Transactional
+    public EmployeeShift updatePlannedLeaveCount(String employeeName, String month, int year, String leaveDate, String departmentName) {
+        List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
 
+        if (employeeShifts.isEmpty()) {
+            throw new EmployeeNotFoundException("Employee with name " + employeeName + " not found for " + month + " " + year + " in department " + departmentName);
+        }
 
+        EmployeeShift employeeShift = employeeShifts.get(0); 
+        employeeShift.getPlannedLeaveDates().add(leaveDate);
+        employeeShift.setPlannedLeave(employeeShift.getPlannedLeaveDates().size());
+
+        return employeeShiftRepository.save(employeeShift);
+    }
+    
+    @Transactional
+    public EmployeeShift updateUnplannedLeaveCount(String employeeName, String month, int year, String leaveDate, String departmentName) {
+        List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
+
+        if (employeeShifts.isEmpty()) {
+            throw new EmployeeNotFoundException("Employee with name " + employeeName + " not found for " + month + " " + year + " in department " + departmentName);
+        }
+
+        EmployeeShift employeeShift = employeeShifts.get(0); 
+        employeeShift.getUnplannedLeaveDates().add(leaveDate);
+        employeeShift.setUnplannedLeave(employeeShift.getUnplannedLeaveDates().size());
+
+        return employeeShiftRepository.save(employeeShift);
+    }
+    
+    @Transactional
+    public EmployeeShift updateSubRestDays(String employeeName, String month, int year, String leaveDate, String departmentName) {
+        List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
+
+        if (employeeShifts.isEmpty()) {
+            throw new EmployeeNotFoundException("Employee with name " + employeeName + " not found for " + month + " " + year + " in department " + departmentName);
+        }
+
+        EmployeeShift employeeShift = employeeShifts.get(0); 
+        employeeShift.getSubRestDays().add(leaveDate);
+
+        return employeeShiftRepository.save(employeeShift);
+    }
+    
+    @Transactional
+    public EmployeeShift updateGeneralCount(String employeeName, String month, int year, int generalCount, String departmentName) {
+        List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
+
+        if (employeeShifts.isEmpty()) {
+            throw new EmployeeNotFoundException("Employee with name " + employeeName + " not found for " + month + " " + year + " in department " + departmentName);
+        }
+
+        EmployeeShift employeeShift = employeeShifts.get(0); 
+        employeeShift.setGeneral(generalCount);
+
+        return employeeShiftRepository.save(employeeShift);
+    }
+    
+    @Transactional
+    public EmployeeShift updateAllowanceBillable(String employeeName, String month, int year, String allowanceBillable, String departmentName) {
+        List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
+
+        if (employeeShifts.isEmpty()) {
+            throw new EmployeeNotFoundException("Employee with name " + employeeName + " not found for " + month + " " + year + " in department " + departmentName);
+        }
+
+        EmployeeShift employeeShift = employeeShifts.get(0); 
+        employeeShift.setAllowanceBillable(allowanceBillable);
+
+        return employeeShiftRepository.save(employeeShift);
+    }
+    
+    @Transactional
+    public EmployeeShift updateComment(String employeeName, String month, int year, String comment, String departmentName) {
+        List<EmployeeShift> employeeShifts = employeeShiftRepository.findByMonthYearAndEmployee_EmployeeNameAndDepartment_DepartmentName(month, year, employeeName, departmentName);
+
+        if (employeeShifts.isEmpty()) {
+            throw new EmployeeNotFoundException("Employee with name " + employeeName + " not found for " + month + " " + year + " in department " + departmentName);
+        }
+
+        EmployeeShift employeeShift = employeeShifts.get(0); 
+        employeeShift.setComment(comment);
+
+        return employeeShiftRepository.save(employeeShift);
+    }
 
 
     
