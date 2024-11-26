@@ -2,13 +2,17 @@ package com.example.shiftmanagement.controller;
 
 import com.example.shiftmanagement.model.EmployeeShift;
 import com.example.shiftmanagement.service.EmployeeShiftService;
+import com.example.shiftmanagement.service.ExcelExportService;
 import com.example.shiftmanagement.util.JwtTokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -17,6 +21,9 @@ public class EmployeeShiftController {
 
     @Autowired
     private EmployeeShiftService employeeShiftService;
+    
+    @Autowired
+    private ExcelExportService excelExportService;
 
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
@@ -252,4 +259,24 @@ public class EmployeeShiftController {
         employeeShiftService.deleteEmployeeData(employeeName, department);
         return ResponseEntity.noContent().build();
     }
+    
+    @GetMapping("/download")
+    public ResponseEntity<byte[]> downloadExcelReport(
+            HttpServletRequest request,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("departmentName") String departmentName) {
+        if (!isAuthorized(request, departmentName)) {
+        	 return ResponseEntity.status(403).build();
+        }
+        try {
+            byte[] excelData = excelExportService.generateExcelReport(month, year, departmentName);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Disposition", "attachment; filename=Allowance_" + departmentName + "_" + month + "_" + year + ".xlsx");
+            return new ResponseEntity<>(excelData, headers, HttpStatus.OK);
+        } catch (IOException e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 }

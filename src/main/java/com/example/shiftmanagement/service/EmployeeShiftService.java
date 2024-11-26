@@ -160,6 +160,7 @@ public class EmployeeShiftService {
                         	case "G":
                         		if(!isWeekend) {
                         			general++;
+                        			hasValidShift = true;
                         		}
                         		break;
                         	}
