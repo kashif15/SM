@@ -63,6 +63,11 @@ public class EmployeeShiftService {
             List<EmployeeShift> employeeShifts = new ArrayList<>();
 
          // Deleting the previous shift data for this month, year, and department
+      
+            // Delete related data first
+            employeeShiftRepository.deletePlannedLeavesByMonthYearAndDepartment(month, year, department.getId());
+            employeeShiftRepository.deleteUnplannedLeavesByMonthYearAndDepartment(month, year, department.getId());
+            employeeShiftRepository.deleteSubRestDaysByMonthYearAndDepartment(month, year, department.getId());
             employeeShiftRepository.deleteSundayShiftsByMonthYearAndDepartment(month, year, department.getId());
             employeeShiftRepository.deleteOnCallShiftsByMonthYearAndDepartment(month, year, department.getId());
             employeeShiftRepository.deleteWorkOffShiftsByMonthYearAndDepartment(month, year, department.getId());

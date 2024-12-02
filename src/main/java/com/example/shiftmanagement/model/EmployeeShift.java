@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.hibernate.annotations.Cascade;
+
 @Entity
 public class EmployeeShift {
 
@@ -42,34 +44,41 @@ public class EmployeeShift {
     @CollectionTable(name = "employee_sunday_shifts", joinColumns = @JoinColumn(name = "employee_shift_id"))
     @MapKeyColumn(name = "date")
     @Column(name = "shift_type")
+    @Cascade(org.hibernate.annotations.CascadeType.ALL) // For Hibernate-specific cascading
     private Map<String, String> sundayShifts = new HashMap<>();
 
     @ElementCollection
-    @CollectionTable(name = "employee_on_call_shifts", joinColumns = @JoinColumn(name = "employee_shift_id"))  // New table for on-call shifts
+    @CollectionTable(name = "employee_on_call_shifts", joinColumns = @JoinColumn(name = "employee_shift_id"))
     @MapKeyColumn(name = "date")
     @Column(name = "shift_type")
+    @Cascade(org.hibernate.annotations.CascadeType.ALL)
     private Map<String, Double> onCallShifts = new HashMap<>();
-    
+
     @ElementCollection
     @CollectionTable(name = "employee_work_off_shifts", joinColumns = @JoinColumn(name = "employee_shift_id"))
     @MapKeyColumn(name = "date")
     @Column(name = "shift_type")
+    @Cascade(org.hibernate.annotations.CascadeType.ALL)
     private Map<String, Double> workOffShifts = new HashMap<>();
-    
+
     @ElementCollection
     @CollectionTable(name = "employee_planned_leaves", joinColumns = @JoinColumn(name = "employee_shift_id"))
     @Column(name = "leave_date")
+    @Cascade(org.hibernate.annotations.CascadeType.ALL)
     private Set<String> plannedLeaveDates = new HashSet<>();
 
     @ElementCollection
     @CollectionTable(name = "employee_unplanned_leaves", joinColumns = @JoinColumn(name = "employee_shift_id"))
     @Column(name = "leave_date")
+    @Cascade(org.hibernate.annotations.CascadeType.ALL)
     private Set<String> unplannedLeaveDates = new HashSet<>();
-    
+
     @ElementCollection
     @CollectionTable(name = "employee_sub_restdays", joinColumns = @JoinColumn(name = "employee_shift_id"))
     @Column(name = "leave_date")
+    @Cascade(org.hibernate.annotations.CascadeType.ALL)
     private Set<String> subRestDays = new HashSet<>();
+
     
     // Getters and Setters
 

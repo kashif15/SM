@@ -55,11 +55,32 @@ public interface EmployeeShiftRepository extends JpaRepository<EmployeeShift, Lo
     @Modifying
     @Query(value = "DELETE FROM employee_work_off_shifts WHERE employee_shift_id IN (SELECT id FROM employee_shift WHERE month = ?1 AND year = ?2 AND department_id = ?3)", nativeQuery = true)
     void deleteWorkOffShiftsByMonthYearAndDepartment(String month, int year, Long departmentId);
+    
+    
 
     // Delete all shifts by month, year, and department
     @Transactional
     @Modifying
     @Query(value = "DELETE FROM employee_shift WHERE month = ?1 AND year = ?2 AND department_id = ?3", nativeQuery = true)
     void deleteByMonthYearAndDepartment(String month, int year, Long departmentId);
+    
+ // Delete planned leaves by month, year, and department
+    @Transactional
+    @Modifying
+    @Query(value = "DELETE FROM employee_planned_leaves WHERE employee_shift_id IN (SELECT id FROM employee_shift WHERE month = ?1 AND year = ?2 AND department_id = ?3)", nativeQuery = true)
+    void deletePlannedLeavesByMonthYearAndDepartment(String month, int year, Long departmentId);
+
+    // Delete unplanned leaves by month, year, and department
+    @Transactional
+    @Modifying
+    @Query(value = "DELETE FROM employee_unplanned_leaves WHERE employee_shift_id IN (SELECT id FROM employee_shift WHERE month = ?1 AND year = ?2 AND department_id = ?3)", nativeQuery = true)
+    void deleteUnplannedLeavesByMonthYearAndDepartment(String month, int year, Long departmentId);
+
+    // Delete sub rest days by month, year, and department
+    @Transactional
+    @Modifying
+    @Query(value = "DELETE FROM employee_sub_restdays WHERE employee_shift_id IN (SELECT id FROM employee_shift WHERE month = ?1 AND year = ?2 AND department_id = ?3)", nativeQuery = true)
+    void deleteSubRestDaysByMonthYearAndDepartment(String month, int year, Long departmentId);
+
 
 }

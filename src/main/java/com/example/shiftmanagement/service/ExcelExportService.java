@@ -26,23 +26,26 @@ public class ExcelExportService {
         // Create header style with yellow background
         CellStyle headerStyle = createHeaderStyle(workbook);
 
+        // Create cell style with borders
+        CellStyle borderedCellStyle = createBorderedCellStyle(workbook);
+
         // Oncall allowance sheet
         Sheet oncallAllowanceSheet = workbook.createSheet("Oncall allowance days");
         createOncallAllowanceSheetHeader(oncallAllowanceSheet, headerStyle);
-        populateOncallAllowanceSheetData(oncallAllowanceSheet, employeeShifts);
-        autoResizeColumns(oncallAllowanceSheet, 6);
+        populateOncallAllowanceSheetData(oncallAllowanceSheet, employeeShifts, borderedCellStyle);
+        autoResizeColumns(oncallAllowanceSheet, 5);
 
         // Work off sheet
         Sheet workOffSheet = workbook.createSheet("Work off");
         createWorkOffSheetHeader(workOffSheet, headerStyle);
-        populateWorkOffSheetData(workOffSheet, employeeShifts);
-        autoResizeColumns(workOffSheet, 6);
+        populateWorkOffSheetData(workOffSheet, employeeShifts, borderedCellStyle);
+        autoResizeColumns(workOffSheet, 5);
 
         // Rest day sheet
         Sheet restDaySheet = workbook.createSheet("Rest Day");
         createRestDaySheetHeader(restDaySheet, headerStyle);
-        populateRestDaySheetData(restDaySheet, employeeShifts);
-        autoResizeColumns(restDaySheet, 7);
+        populateRestDaySheetData(restDaySheet, employeeShifts, borderedCellStyle);
+        autoResizeColumns(restDaySheet, 6);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         workbook.write(byteArrayOutputStream);
@@ -51,7 +54,6 @@ public class ExcelExportService {
         return byteArrayOutputStream.toByteArray();
     }
 
-    // Create header style with yellow background
     private CellStyle createHeaderStyle(Workbook workbook) {
         XSSFCellStyle headerStyle = (XSSFCellStyle) workbook.createCellStyle();
         headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
@@ -64,12 +66,21 @@ public class ExcelExportService {
         return headerStyle;
     }
 
+    private CellStyle createBorderedCellStyle(Workbook workbook) {
+        CellStyle cellStyle = workbook.createCellStyle();
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        return cellStyle;
+    }
+
     private void createOncallAllowanceSheetHeader(Sheet sheet, CellStyle headerStyle) {
         Row headerRow = sheet.createRow(0);
 
         String[] headers = {
-                "EMP ID", "EMPLOYEE NAME", "PROJECT/SUB DEPT",
-                "ALLOWANCE BILLABLE TO DLV YES/NO", "NO OF ONCALL DAYS", "ONCALL DATES"
+                "EMP ID", "EMPLOYEE NAME", "ALLOWANCE BILLABLE TO DLV YES/NO", 
+                "NO OF ONCALL DAYS", "ONCALL DATES"
         };
 
         for (int i = 0; i < headers.length; i++) {
@@ -83,8 +94,8 @@ public class ExcelExportService {
         Row headerRow = sheet.createRow(0);
 
         String[] headers = {
-                "EMP ID", "EMPLOYEE NAME", "PROJECT/SUB DEPT",
-                "ALLOWANCE BILLABLE TO DLV YES/NO", "WORK OFF DAYS", "WORKOFF DATES"
+                "EMP ID", "EMPLOYEE NAME", "ALLOWANCE BILLABLE TO DLV YES/NO",
+                "WORK OFF DAYS", "WORKOFF DATES"
         };
 
         for (int i = 0; i < headers.length; i++) {
@@ -98,8 +109,8 @@ public class ExcelExportService {
         Row headerRow = sheet.createRow(0);
 
         String[] headers = {
-                "EMP ID", "EMPLOYEE NAME", "PROJECT/SUB DEPT",
-                "ALLOWANCE BILLABLE TO DLV YES/NO", "REST DAY", "REST DATES", "SUBSTITUTE REST DAY"
+                "EMP ID", "EMPLOYEE NAME", "ALLOWANCE BILLABLE TO DLV YES/NO",
+                "REST DAY", "REST DATES", "SUBSTITUTE REST DAY"
         };
 
         for (int i = 0; i < headers.length; i++) {
@@ -115,43 +126,59 @@ public class ExcelExportService {
         }
     }
 
-    private void populateOncallAllowanceSheetData(Sheet sheet, List<EmployeeShift> employeeShifts) {
+    private void populateOncallAllowanceSheetData(Sheet sheet, List<EmployeeShift> employeeShifts, CellStyle cellStyle) {
         int rowNum = 1;
         for (EmployeeShift shift : employeeShifts) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(shift.getEmployee().getEmployeeId());
-            row.createCell(1).setCellValue(shift.getEmployee().getEmployeeName());
-            row.createCell(2).setCellValue(shift.getDepartment().getDepartmentName());
-            row.createCell(3).setCellValue(shift.getAllowanceBillable());
-            row.createCell(4).setCellValue(shift.getOnCallCount());
-            row.createCell(5).setCellValue(String.join(", ", shift.getOnCallShifts().keySet()));
+            createCell(row, 0, shift.getEmployee().getEmployeeId(), cellStyle);
+            createCell(row, 1, shift.getEmployee().getEmployeeName(), cellStyle);
+            createCell(row, 2, shift.getAllowanceBillable(), cellStyle);
+            createCell(row, 3, shift.getOnCallCount(), cellStyle);
+            createCell(row, 4, String.join(", ", shift.getOnCallShifts().keySet()), cellStyle);
         }
     }
 
-    private void populateWorkOffSheetData(Sheet sheet, List<EmployeeShift> employeeShifts) {
+    private void populateWorkOffSheetData(Sheet sheet, List<EmployeeShift> employeeShifts, CellStyle cellStyle) {
         int rowNum = 1;
         for (EmployeeShift shift : employeeShifts) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(shift.getEmployee().getEmployeeId());
-            row.createCell(1).setCellValue(shift.getEmployee().getEmployeeName());
-            row.createCell(2).setCellValue(shift.getDepartment().getDepartmentName());
-            row.createCell(3).setCellValue(shift.getAllowanceBillable());
-            row.createCell(4).setCellValue(shift.getWorkOffCount());
-            row.createCell(5).setCellValue(String.join(", ", shift.getWorkOffShifts().keySet()));
+            createCell(row, 0, shift.getEmployee().getEmployeeId(), cellStyle);
+            createCell(row, 1, shift.getEmployee().getEmployeeName(), cellStyle);
+            createCell(row, 2, shift.getAllowanceBillable(), cellStyle);
+            createCell(row, 3, shift.getWorkOffCount(), cellStyle);
+            createCell(row, 4, String.join(", ", shift.getWorkOffShifts().keySet()), cellStyle);
         }
     }
 
-    private void populateRestDaySheetData(Sheet sheet, List<EmployeeShift> employeeShifts) {
+    private void populateRestDaySheetData(Sheet sheet, List<EmployeeShift> employeeShifts, CellStyle cellStyle) {
         int rowNum = 1;
         for (EmployeeShift shift : employeeShifts) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(shift.getEmployee().getEmployeeId());
-            row.createCell(1).setCellValue(shift.getEmployee().getEmployeeName());
-            row.createCell(2).setCellValue(shift.getDepartment().getDepartmentName());
-            row.createCell(3).setCellValue(shift.getAllowanceBillable());
-            row.createCell(4).setCellValue(shift.getSundayCount());
-            row.createCell(5).setCellValue(String.join(", ", shift.getSundayShifts().keySet()));
-            row.createCell(6).setCellValue(String.join(", ", shift.getSubRestDays()));
+            createCell(row, 0, shift.getEmployee().getEmployeeId(), cellStyle);
+            createCell(row, 1, shift.getEmployee().getEmployeeName(), cellStyle);
+            createCell(row, 2, shift.getAllowanceBillable(), cellStyle);
+            createCell(row, 3, shift.getSundayCount(), cellStyle);
+            createCell(row, 4, String.join(", ", shift.getSundayShifts().keySet()), cellStyle);
+            createCell(row, 5, String.join(", ", shift.getSubRestDays()), cellStyle);
         }
     }
+
+    private void createCell(Row row, int column, String value, CellStyle cellStyle) {
+        Cell cell = row.createCell(column);
+        cell.setCellValue(value);
+        cell.setCellStyle(cellStyle);
+    }
+
+    private void createCell(Row row, int column, int value, CellStyle cellStyle) {
+        Cell cell = row.createCell(column);
+        cell.setCellValue(value);
+        cell.setCellStyle(cellStyle);
+    }
+
+    private void createCell(Row row, int column, double value, CellStyle cellStyle) {
+        Cell cell = row.createCell(column);
+        cell.setCellValue(value);
+        cell.setCellStyle(cellStyle);
+    }
+
 }
