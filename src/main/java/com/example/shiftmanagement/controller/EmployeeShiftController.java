@@ -2,6 +2,7 @@ package com.example.shiftmanagement.controller;
 
 import com.example.shiftmanagement.model.EmployeeShift;
 import com.example.shiftmanagement.service.EmployeeShiftService;
+import com.example.shiftmanagement.model.LockedShift;
 import com.example.shiftmanagement.service.ExcelExportService;
 import com.example.shiftmanagement.util.JwtTokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,32 @@ public class EmployeeShiftController {
         }
         return false;
     }
+    
+ // Helper method to check if user is a Super Admin
+    private boolean isSuperAdmin(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+            String userDepartment = jwtTokenUtil.getDepartmentFromToken(token);
+            return "ALL".equalsIgnoreCase(userDepartment); // Superadmin has department as "ALL"
+        }
+        return false;
+    }
+    
+    @PostMapping("/lock")
+    public ResponseEntity<String> lockDepartmentShifts(HttpServletRequest request, 
+                                                       @RequestParam String department, 
+                                                       @RequestParam String month, 
+                                                       @RequestParam int year) {
+        if (!isSuperAdmin(request)) {
+            return ResponseEntity.status(403).body("Only superadmins can lock shift uploads.");
+        }
+
+        employeeShiftService.lockShiftData(department, month, year);
+        return ResponseEntity.ok("Shift uploads locked successfully.");
+    }
+
+
 
 
     @PostMapping("/upload")
@@ -45,6 +72,11 @@ public class EmployeeShiftController {
         if (!isAuthorized(request, department)) {
             return ResponseEntity.status(403).body("Access denied to this department's data");
         }
+        
+        if (employeeShiftService.isShiftLocked(department, month, year)) {
+            return ResponseEntity.status(403).body("Shift data for this month is locked.");
+        }
+        
         employeeShiftService.saveShiftData(month, year, department, file);
         return ResponseEntity.ok("Shift data uploaded successfully");
     }
@@ -54,6 +86,7 @@ public class EmployeeShiftController {
         if (!isAuthorized(request, department)) {
             return ResponseEntity.status(403).build();
         }
+        
         return ResponseEntity.ok(employeeShiftService.getAllEmployeeShifts(month, year, department));
     }
 

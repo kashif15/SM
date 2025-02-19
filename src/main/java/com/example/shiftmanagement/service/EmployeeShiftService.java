@@ -5,9 +5,12 @@ import com.example.shiftmanagement.exception.EmployeeNotFoundException;
 import com.example.shiftmanagement.model.Employee;
 import com.example.shiftmanagement.model.Department;
 import com.example.shiftmanagement.model.EmployeeShift;
+import com.example.shiftmanagement.model.LockedShift;
 import com.example.shiftmanagement.repository.EmployeeRepository;
 import com.example.shiftmanagement.repository.DepartmentRepository;
 import com.example.shiftmanagement.repository.EmployeeShiftRepository;
+import com.example.shiftmanagement.repository.LockedShiftRepository;
+
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +35,9 @@ public class EmployeeShiftService {
     
     @Autowired
     private DepartmentRepository departmentRepository;
+    
+    @Autowired
+    private LockedShiftRepository lockedShiftRepository;
 
     private static final List<String> VALID_SHIFT_CODES = Arrays.asList("M", "A", "N");
 
@@ -45,6 +51,15 @@ public class EmployeeShiftService {
     private static final List<String> Holiday_Date = Arrays.asList("26-Jan","1-May", "15-Aug", "2-Oct");
     
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("d-MMM");
+    
+    public void lockShiftData(String department, String month, int year) {
+        LockedShift lock = new LockedShift(department, month, year);
+        lockedShiftRepository.save(lock);
+    }
+
+    public boolean isShiftLocked(String department, String month, int year) {
+        return lockedShiftRepository.existsByDepartmentAndMonthAndYear(department, month, year);
+    }
 
     @Transactional
     public void saveShiftData(String month, int year, String departmentName, MultipartFile file) {
