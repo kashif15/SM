@@ -3,11 +3,16 @@ package com.example.shiftmanagement.controller;
 import com.example.shiftmanagement.model.EmployeeShift;
 import com.example.shiftmanagement.service.EmployeeShiftService;
 import com.example.shiftmanagement.model.LockedShift;
+import com.example.shiftmanagement.model.MasterEmployee;
+import com.example.shiftmanagement.repository.MasterEmployeeRepository;
 import com.example.shiftmanagement.service.ExcelExportService;
+import com.example.shiftmanagement.service.MasterEmployeeService;
 import com.example.shiftmanagement.util.JwtTokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +30,12 @@ public class EmployeeShiftController {
     
     @Autowired
     private ExcelExportService excelExportService;
+    
+    @Autowired
+    private MasterEmployeeService masterEmployeeService;
+
+    @Autowired
+    private MasterEmployeeRepository masterEmployeeRepository;
 
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
@@ -62,6 +73,50 @@ public class EmployeeShiftController {
 
         employeeShiftService.lockShiftData(department, month, year);
         return ResponseEntity.ok("Shift uploads locked successfully.");
+    }
+    
+    @PostMapping("/upload-report")
+    public ResponseEntity<String> uploadMasterList(HttpServletRequest request, @RequestParam("month") String month,
+                                                   @RequestParam("year") int year,
+                                                   @RequestParam("file") MultipartFile file) {
+        
+    	if (!isSuperAdmin(request)) {
+            return ResponseEntity.status(403).body("Only superadmins can upload qlickview report.");
+        }
+    	
+    	try {
+            masterEmployeeService.uploadMasterList(month, year, file);
+            return ResponseEntity.ok("Master employee list uploaded successfully");
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Error processing file");
+        }
+    }
+
+    @GetMapping("/compare-report")
+    public ResponseEntity<?> downloadMissingEmployees(HttpServletRequest request, @RequestParam("month") String month,
+                                                           @RequestParam("year") int year,
+                                                           @RequestParam("department") String department) {
+    	 if (!isSuperAdmin(request)) {
+    	        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+    	    }
+
+    	    // ✅ Check if the master list exists before proceeding
+    	    List<MasterEmployee> masterList = masterEmployeeRepository.findByMonthAndYear(month, year);
+    	    if (masterList == null || masterList.isEmpty()) {
+    	        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+    	                .body("Master employee list not found for " + month + " " + year);
+    	    }
+    	
+    	try {
+            byte[] excelFile = excelExportService.generateMissingEmployeesReport(department, month, year);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentDispositionFormData("attachment", "Missing_Employees.xlsx");
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            return new ResponseEntity<>(excelFile, headers, HttpStatus.OK);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body(null);
+        }
     }
 
 
