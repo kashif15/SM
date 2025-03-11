@@ -60,6 +60,11 @@ public class EmployeeShiftService {
     public boolean isShiftLocked(String department, String month, int year) {
         return lockedShiftRepository.existsByDepartmentAndMonthAndYear(department, month, year);
     }
+    
+    public void unlockShiftData(String department, String month, int year) {
+        lockedShiftRepository.deleteByDepartmentAndMonthAndYear(department, month, year);
+    }
+
 
     @Transactional
     public void saveShiftData(String month, int year, String departmentName, MultipartFile file) {

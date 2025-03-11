@@ -75,6 +75,24 @@ public class EmployeeShiftController {
         return ResponseEntity.ok("Shift uploads locked successfully.");
     }
     
+    @PostMapping("/unlock")
+    public ResponseEntity<String> unlockDepartmentShifts(HttpServletRequest request, 
+                                                         @RequestParam String department, 
+                                                         @RequestParam String month, 
+                                                         @RequestParam int year) {
+        if (!isSuperAdmin(request)) {
+            return ResponseEntity.status(403).body("Only superadmins can unlock shift uploads.");
+        }
+
+        if (!employeeShiftService.isShiftLocked(department, month, year)) {
+            return ResponseEntity.badRequest().body("Shift data is not locked for this month.");
+        }
+
+        employeeShiftService.unlockShiftData(department, month, year);
+        return ResponseEntity.ok("Shift uploads unlocked successfully.");
+    }
+
+    
     @PostMapping("/upload-report")
     public ResponseEntity<String> uploadMasterList(HttpServletRequest request, @RequestParam("month") String month,
                                                    @RequestParam("year") int year,
