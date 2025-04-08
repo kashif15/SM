@@ -91,6 +91,45 @@ public class EmployeeShiftController {
         employeeShiftService.unlockShiftData(department, month, year);
         return ResponseEntity.ok("Shift uploads unlocked successfully.");
     }
+    
+    @PostMapping("/edit/lock")
+    public ResponseEntity<String> lockEdit(HttpServletRequest request,
+                                           @RequestParam String department,
+                                           @RequestParam String month,
+                                           @RequestParam int year) {
+        if (!isSuperAdmin(request)) {
+            return ResponseEntity.status(403).body("Only superadmins can lock edit operations.");
+        }
+
+        employeeShiftService.lockEdit(department, month, year);
+        return ResponseEntity.ok("Edit locked successfully.");
+    }
+
+    @PostMapping("/edit/unlock")
+    public ResponseEntity<String> unlockEdit(HttpServletRequest request,
+                                             @RequestParam String department,
+                                             @RequestParam String month,
+                                             @RequestParam int year) {
+        if (!isSuperAdmin(request)) {
+            return ResponseEntity.status(403).body("Only superadmins can unlock edit operations.");
+        }
+
+        if (!employeeShiftService.isEditLocked(department, month, year)) {
+            return ResponseEntity.badRequest().body("Edit is not locked for this month.");
+        }
+
+        employeeShiftService.unlockEdit(department, month, year);
+        return ResponseEntity.ok("Edit unlocked successfully.");
+    }
+
+    @GetMapping("/edit/locked")
+    public ResponseEntity<Boolean> checkEditLocked(@RequestParam String department,
+                                                   @RequestParam String month,
+                                                   @RequestParam int year) {
+        boolean isLocked = employeeShiftService.isEditLocked(department, month, year);
+        return ResponseEntity.ok(isLocked);
+    }
+
 
     
     @PostMapping("/upload-report")

@@ -5,10 +5,12 @@ import com.example.shiftmanagement.exception.EmployeeNotFoundException;
 import com.example.shiftmanagement.model.Employee;
 import com.example.shiftmanagement.model.Department;
 import com.example.shiftmanagement.model.EmployeeShift;
+import com.example.shiftmanagement.model.LockedEdit;
 import com.example.shiftmanagement.model.LockedShift;
 import com.example.shiftmanagement.repository.EmployeeRepository;
 import com.example.shiftmanagement.repository.DepartmentRepository;
 import com.example.shiftmanagement.repository.EmployeeShiftRepository;
+import com.example.shiftmanagement.repository.LockedEditRepository;
 import com.example.shiftmanagement.repository.LockedShiftRepository;
 
 import org.apache.poi.ss.usermodel.*;
@@ -38,6 +40,9 @@ public class EmployeeShiftService {
     
     @Autowired
     private LockedShiftRepository lockedShiftRepository;
+    
+    @Autowired
+    private LockedEditRepository lockedEditRepository;
 
     private static final List<String> VALID_SHIFT_CODES = Arrays.asList("M", "A", "N");
 
@@ -64,6 +69,21 @@ public class EmployeeShiftService {
     public void unlockShiftData(String department, String month, int year) {
         lockedShiftRepository.deleteByDepartmentAndMonthAndYear(department, month, year);
     }
+    
+
+    public void lockEdit(String department, String month, int year) {
+        LockedEdit lock = new LockedEdit(department, month, year);
+        lockedEditRepository.save(lock);
+    }
+
+    public void unlockEdit(String department, String month, int year) {
+        lockedEditRepository.deleteByDepartmentAndMonthAndYear(department, month, year);
+    }
+
+    public boolean isEditLocked(String department, String month, int year) {
+        return lockedEditRepository.existsByDepartmentAndMonthAndYear(department, month, year);
+    }
+
 
 
     @Transactional
