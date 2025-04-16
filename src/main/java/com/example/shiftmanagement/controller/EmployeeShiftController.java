@@ -150,29 +150,33 @@ public class EmployeeShiftController {
     }
 
     @GetMapping("/compare-report")
-    public ResponseEntity<?> downloadMissingEmployees(HttpServletRequest request, @RequestParam("month") String month,
-                                                           @RequestParam("year") int year,
-                                                           @RequestParam("department") String department) {
-    	 if (!isSuperAdmin(request)) {
-    	        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
-    	    }
+    public ResponseEntity<?> downloadMissingEmployees(
+            HttpServletRequest request,
+            @RequestParam("month") String month,
+            @RequestParam("year") int year,
+            @RequestParam("department") String department) {
 
-    	    // ✅ Check if the master list exists before proceeding
-    	    List<MasterEmployee> masterList = masterEmployeeRepository.findByMonthAndYear(month, year);
-    	    if (masterList == null || masterList.isEmpty()) {
-    	        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-    	                .body("Master employee list not found for " + month + " " + year);
-    	    }
-    	
-    	try {
+        if (!isSuperAdmin(request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+        }
+
+        List<MasterEmployee> masterList = masterEmployeeRepository.findByMonthAndYear(month, year);
+        if (masterList == null || masterList.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Master employee list not found for " + month + " " + year);
+        }
+
+        try {
             byte[] excelFile = excelExportService.generateMissingEmployeesReport(department, month, year);
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentDispositionFormData("attachment", "Missing_Employees.xlsx");
+            String fileName = "Missing_Employees_" + department + "_" + month + "_" + year + ".xlsx";
+            headers.setContentDispositionFormData("attachment", fileName);
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             return new ResponseEntity<>(excelFile, headers, HttpStatus.OK);
+
         } catch (IOException e) {
-            return ResponseEntity.status(500).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 

@@ -59,14 +59,15 @@ public class ExcelExportService {
     
  // NEW METHOD: Generate Excel for Missing Employees
     public byte[] generateMissingEmployeesReport(String department, String month, int year) throws IOException {
-        List<String> missingEmployees = masterEmployeeService.findMissingEmployees(month, year, department);
-        
-        
+        List<String> missingEmployeeNames = masterEmployeeService.findMissingEmployees(month, year, department);
+
+        // Fetch all shifts to find extra info if available
+        List<EmployeeShift> allShifts = employeeShiftRepository.findByMonthAndYearAndDepartment(month, year, department);
 
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Missing Employees");
 
-        // Create header style (Yellow background)
+        // Header style (Yellow background)
         CellStyle headerStyle = workbook.createCellStyle();
         headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
         headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -75,7 +76,7 @@ public class ExcelExportService {
         font.setBold(true);
         headerStyle.setFont(font);
 
-        // Create bordered cell style
+        // Bordered style
         CellStyle borderedCellStyle = workbook.createCellStyle();
         borderedCellStyle.setBorderTop(BorderStyle.THIN);
         borderedCellStyle.setBorderBottom(BorderStyle.THIN);
@@ -84,27 +85,44 @@ public class ExcelExportService {
 
         // Create header row
         Row headerRow = sheet.createRow(0);
-        String[] headers = { "EMPLOYEE NAME" };
-        
+        String[] headers = {"EMP ID", "EMPLOYEE NAME", "AFTERNOON", "MORNING", "NIGHT", "TOTAL"};
+
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
             cell.setCellStyle(headerStyle);
         }
 
-        // Add missing employee names
+        // Populate data rows
         int rowNum = 1;
-        for (String employeeName : missingEmployees) {
+        for (String empName : missingEmployeeNames) {
             Row row = sheet.createRow(rowNum++);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(employeeName);
-            cell.setCellStyle(borderedCellStyle);
+
+            // Find shift data if exists
+            EmployeeShift shift = allShifts.stream()
+                    .filter(es -> es.getEmployee().getEmployeeName().equalsIgnoreCase(empName))
+                    .findFirst()
+                    .orElse(null);
+
+            String empId = (shift != null) ? shift.getEmployee().getEmployeeId() : "";
+            String afternoon = (shift != null) ? String.valueOf(shift.getAfternoonShiftCount()) : "";
+            String morning = (shift != null) ? String.valueOf(shift.getMorningShiftCount()) : "";
+            String night = (shift != null) ? String.valueOf(shift.getNightShiftCount()) : "";
+            String total = (shift != null) ? String.valueOf(shift.getTotalMoney()) : "";
+
+            createCell(row, 0, empId, borderedCellStyle);
+            createCell(row, 1, empName, borderedCellStyle);
+            createCell(row, 2, afternoon, borderedCellStyle);
+            createCell(row, 3, morning, borderedCellStyle);
+            createCell(row, 4, night, borderedCellStyle);
+            createCell(row, 5, total, borderedCellStyle);
         }
 
-        // Auto-resize column
-        sheet.autoSizeColumn(0);
+        // Auto-resize all columns
+        for (int i = 0; i < headers.length; i++) {
+            sheet.autoSizeColumn(i);
+        }
 
-        // Convert workbook to byte array
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         workbook.write(byteArrayOutputStream);
         workbook.close();
