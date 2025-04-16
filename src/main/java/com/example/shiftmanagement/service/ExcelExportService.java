@@ -1,7 +1,10 @@
 package com.example.shiftmanagement.service;
 
 import com.example.shiftmanagement.model.EmployeeShift;
+import java.util.Optional;
+
 import com.example.shiftmanagement.repository.EmployeeShiftRepository;
+
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -61,64 +64,65 @@ public class ExcelExportService {
     public byte[] generateMissingEmployeesReport(String department, String month, int year) throws IOException {
         List<String> missingEmployeeNames = masterEmployeeService.findMissingEmployees(month, year, department);
 
-        // Fetch all shifts to find extra info if available
+        // Fetch all shifts for this month/year/department
         List<EmployeeShift> allShifts = employeeShiftRepository.findByMonthAndYearAndDepartment(month, year, department);
 
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Missing Employees");
 
-        // Header style (Yellow background)
+        // Header styling
         CellStyle headerStyle = workbook.createCellStyle();
         headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
         headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
         Font font = workbook.createFont();
         font.setBold(true);
         headerStyle.setFont(font);
 
-        // Bordered style
         CellStyle borderedCellStyle = workbook.createCellStyle();
         borderedCellStyle.setBorderTop(BorderStyle.THIN);
         borderedCellStyle.setBorderBottom(BorderStyle.THIN);
         borderedCellStyle.setBorderLeft(BorderStyle.THIN);
         borderedCellStyle.setBorderRight(BorderStyle.THIN);
 
-        // Create header row
+        // Header row
         Row headerRow = sheet.createRow(0);
         String[] headers = {"EMP ID", "EMPLOYEE NAME", "AFTERNOON", "MORNING", "NIGHT", "TOTAL"};
-
         for (int i = 0; i < headers.length; i++) {
-            Cell cell = headerRow.createCell(i);
-            cell.setCellValue(headers[i]);
-            cell.setCellStyle(headerStyle);
+            createCell(headerRow, i, headers[i], headerStyle);
         }
 
-        // Populate data rows
+        // Fill missing employees only
         int rowNum = 1;
         for (String empName : missingEmployeeNames) {
             Row row = sheet.createRow(rowNum++);
 
-            // Find shift data if exists
-            EmployeeShift shift = allShifts.stream()
+            // Try to find shift data if it exists
+            Optional<EmployeeShift> optShift = allShifts.stream()
                     .filter(es -> es.getEmployee().getEmployeeName().equalsIgnoreCase(empName))
-                    .findFirst()
-                    .orElse(null);
+                    .findFirst();
 
-            String empId = (shift != null) ? shift.getEmployee().getEmployeeId() : "";
-            String afternoon = (shift != null) ? String.valueOf(shift.getAfternoonShiftCount()) : "";
-            String morning = (shift != null) ? String.valueOf(shift.getMorningShiftCount()) : "";
-            String night = (shift != null) ? String.valueOf(shift.getNightShiftCount()) : "";
-            String total = (shift != null) ? String.valueOf(shift.getTotalMoney()) : "";
+            if (optShift.isPresent()) {
+                EmployeeShift shift = optShift.get();
 
-            createCell(row, 0, empId, borderedCellStyle);
-            createCell(row, 1, empName, borderedCellStyle);
-            createCell(row, 2, afternoon, borderedCellStyle);
-            createCell(row, 3, morning, borderedCellStyle);
-            createCell(row, 4, night, borderedCellStyle);
-            createCell(row, 5, total, borderedCellStyle);
+                createCell(row, 0, shift.getEmployee().getEmployeeId(), borderedCellStyle);
+                createCell(row, 1, empName, borderedCellStyle);
+                createCell(row, 2, shift.getAfternoonShiftCount(), borderedCellStyle);
+                createCell(row, 3, shift.getMorningShiftCount(), borderedCellStyle);
+                createCell(row, 4, shift.getNightShiftCount(), borderedCellStyle);
+                createCell(row, 5, shift.getTotalMoney(), borderedCellStyle);
+
+            } else {
+                // If no shift data, leave shift cells empty
+                createCell(row, 0, "", borderedCellStyle);
+                createCell(row, 1, empName, borderedCellStyle);
+                createCell(row, 2, "", borderedCellStyle);
+                createCell(row, 3, "", borderedCellStyle);
+                createCell(row, 4, "", borderedCellStyle);
+                createCell(row, 5, "", borderedCellStyle);
+            }
         }
 
-        // Auto-resize all columns
+        // Auto-size columns
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
         }
@@ -129,6 +133,7 @@ public class ExcelExportService {
 
         return byteArrayOutputStream.toByteArray();
     }
+
 
     private CellStyle createHeaderStyle(Workbook workbook) {
         XSSFCellStyle headerStyle = (XSSFCellStyle) workbook.createCellStyle();
