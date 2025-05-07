@@ -60,9 +60,8 @@ public class ExcelExportService {
         return byteArrayOutputStream.toByteArray();
     }
     
- // NEW METHOD: Generate Excel for Missing Employees
     public byte[] generateMissingEmployeesReport(String department, String month, int year) throws IOException {
-        List<String> missingEmployeeNames = masterEmployeeService.findMissingEmployees(month, year, department);
+        List<String> missingEmployeeIds = masterEmployeeService.findMissingEmployeeIds(month, year, department);
 
         // Fetch all shifts for this month/year/department
         List<EmployeeShift> allShifts = employeeShiftRepository.findByMonthAndYearAndDepartment(month, year, department);
@@ -93,28 +92,26 @@ public class ExcelExportService {
 
         // Fill missing employees only
         int rowNum = 1;
-        for (String empName : missingEmployeeNames) {
+        for (String empId : missingEmployeeIds) {
             Row row = sheet.createRow(rowNum++);
 
-            // Try to find shift data if it exists
             Optional<EmployeeShift> optShift = allShifts.stream()
-                    .filter(es -> es.getEmployee().getEmployeeName().equalsIgnoreCase(empName))
+                    .filter(es -> es.getEmployee().getEmployeeId().equalsIgnoreCase(empId))
                     .findFirst();
 
             if (optShift.isPresent()) {
                 EmployeeShift shift = optShift.get();
 
-                createCell(row, 0, shift.getEmployee().getEmployeeId(), borderedCellStyle);
-                createCell(row, 1, empName, borderedCellStyle);
+                createCell(row, 0, empId, borderedCellStyle);
+                createCell(row, 1, shift.getEmployee().getEmployeeName(), borderedCellStyle);
                 createCell(row, 2, shift.getAfternoonShiftCount(), borderedCellStyle);
                 createCell(row, 3, shift.getMorningShiftCount(), borderedCellStyle);
                 createCell(row, 4, shift.getNightShiftCount(), borderedCellStyle);
                 createCell(row, 5, shift.getTotalMoney(), borderedCellStyle);
 
             } else {
-                // If no shift data, leave shift cells empty
-                createCell(row, 0, "", borderedCellStyle);
-                createCell(row, 1, empName, borderedCellStyle);
+                createCell(row, 0, empId, borderedCellStyle);
+                createCell(row, 1, "", borderedCellStyle);
                 createCell(row, 2, "", borderedCellStyle);
                 createCell(row, 3, "", borderedCellStyle);
                 createCell(row, 4, "", borderedCellStyle);

@@ -84,8 +84,7 @@ public class EmployeeShiftService {
         return lockedEditRepository.existsByDepartmentAndMonthAndYear(department, month, year);
     }
 
-
-
+    
     @Transactional
     public void saveShiftData(String month, int year, String departmentName, MultipartFile file) {
         // Fetch the department or create a new one if it doesn't exist
@@ -102,9 +101,7 @@ public class EmployeeShiftService {
 
             List<EmployeeShift> employeeShifts = new ArrayList<>();
 
-         // Deleting the previous shift data for this month, year, and department
-      
-            // Delete related data first
+            // Delete previous shift data for this month, year, and department
             employeeShiftRepository.deletePlannedLeavesByMonthYearAndDepartment(month, year, department.getId());
             employeeShiftRepository.deleteUnplannedLeavesByMonthYearAndDepartment(month, year, department.getId());
             employeeShiftRepository.deleteSubRestDaysByMonthYearAndDepartment(month, year, department.getId());
@@ -114,23 +111,28 @@ public class EmployeeShiftService {
             employeeShiftRepository.deleteByMonthYearAndDepartment(month, year, department.getId());
 
             if (!rows.hasNext()) return; // Ensure there is at least one row
-            Row datesRow = rows.next(); // Read the first row (dates)
+            Row datesRow = rows.next(); // First row: dates
 
             if (!rows.hasNext()) return; // Ensure there is a second row
-            Row dayNamesRow = rows.next(); // Read the second row (day names)
+            Row dayNamesRow = rows.next(); // Second row: day names
 
             while (rows.hasNext()) {
                 Row row = rows.next();
-                if (row == null || row.getCell(0) == null || row.getCell(0).getCellType() != CellType.STRING) continue;
-                
-                // Check for empty or invalid employee name
-                String employeeName = row.getCell(0).getStringCellValue().trim();
-                if (employeeName.isEmpty() || INVALID_EMPLOYEE_NAMES.contains(employeeName)) continue;
+                if (row == null) continue;
 
-                // Check if employee already exists in the database
-                Employee employee = employeeRepository.findByEmployeeNameAndDepartment(employeeName, department).orElse(null);
+                // Read EMP ID and Name from column 0 and 1
+                String empId = getCellStringValue(row.getCell(0)).trim();
+                String employeeName = getCellStringValue(row.getCell(1)).trim();
+
+               
+             // Skip if invalid empId or name
+                if (empId.isEmpty() || employeeName.isEmpty() || INVALID_EMPLOYEE_NAMES.contains(employeeName)) continue;
+
+                // Fetch employee by empId and department
+                Employee employee = employeeRepository.findByEmployeeIdAndDepartment(empId, department).orElse(null);
                 if (employee == null) {
                     employee = new Employee();
+                    employee.setEmployeeId(empId);
                     employee.setEmployeeName(employeeName);
                     employee.setDepartment(department);
                     employee = employeeRepository.save(employee);
@@ -141,38 +143,36 @@ public class EmployeeShiftService {
                 employeeShift.setMonth(month);
                 employeeShift.setYear(year);
                 employeeShift.setDepartment(department);
+
                 int morningShiftCount = 0, afternoonShiftCount = 0, nightShiftCount = 0;
                 int sundayCount = 0;
                 int plannedLeave = 0;
                 int unplannedLeave = 0;
                 int general = 0;
-                
+
                 Map<String, String> sundayShifts = new HashMap<>();
+                boolean hasValidShift = false;
 
-                boolean hasValidShift = false; // Flag to check for valid shifts
-
-                for (int i = 1; i < row.getLastCellNum(); i++) {
+                // Start from column index 2 (after EMP ID and Name)
+                for (int i = 2; i < row.getLastCellNum(); i++) {
                     Cell cell = row.getCell(i);
                     if (cell != null && cell.getCellType() == CellType.STRING) {
                         String shiftType = cell.getStringCellValue().trim();
-                        
+
                         String dateStr = getCellStringValue(datesRow.getCell(i));
                         String dayName = getCellStringValue(dayNamesRow.getCell(i));
-
-                        
                         boolean isWeekend = "Sat".equals(dayName) || "Sun".equals(dayName);
-                        
-                        if (VALID_SHIFT_CODES.contains(shiftType)) {
-                            hasValidShift = true; 
 
-                            
+                        if (VALID_SHIFT_CODES.contains(shiftType)) {
+                            hasValidShift = true;
+
                             if ("Sun".equals(dayName)) {
                                 sundayCount++;
                                 sundayShifts.put(dateStr, shiftType);
                             }
-                            
-                            if(Holiday_Date.contains(dateStr)) {
-                            	employeeShift.setHoliday(dateStr);
+
+                            if (Holiday_Date.contains(dateStr)) {
+                                employeeShift.setHoliday(dateStr);
                             } else if (!isWeekend) {
                                 switch (shiftType) {
                                     case "M":
@@ -184,45 +184,52 @@ public class EmployeeShiftService {
                                     case "N":
                                         nightShiftCount++;
                                         break;
+                                    case "G":
+                                        if (!isWeekend) {
+                                            general++;
+                                            hasValidShift = true;
+                                        }
+                                        break;
                                 }
                             }
-                        }else {
-                        	
-                        	switch(shiftType) {
-                        	case "P":
-                        		employeeShift.getPlannedLeaveDates().add(dateStr);
-                        		plannedLeave++;
-                        		break;
-                        	case "U":
-                        		employeeShift.getUnplannedLeaveDates().add(dateStr);
-                        		unplannedLeave++;
-                        		break;
-                        	case "C":
-                        		if(!isWeekend) {
-                        			general++;
-                        		}
-                        		break;
-                        	case "G":
-                        		if(!isWeekend) {
-                        			general++;
-                        			hasValidShift = true;
-                        		}
-                        		break;
-                        	}
-                        	
+                        } else {
+                            switch (shiftType) {
+                                case "P":
+                                    employeeShift.getPlannedLeaveDates().add(dateStr);
+                                    plannedLeave++;
+                                    break;
+                                case "U":
+                                    employeeShift.getUnplannedLeaveDates().add(dateStr);
+                                    unplannedLeave++;
+                                    break;
+                                case "C":
+                                    if (!isWeekend) {
+                                        general++;
+                                    }
+                                    break;
+                                case "G":
+                                    if (!isWeekend) {
+                                        general++;
+                                        hasValidShift = true;
+                                    }
+                                    break;
+                            }
                         }
-
                     }
                 }
 
-                // Skip rows without valid shifts
                 if (!hasValidShift) continue;
 
                 double morningRate = getRateForShift("Morning");
                 double afternoonRate = getRateForShift("Afternoon");
                 double nightRate = getRateForShift("Night");
-                double totalMoney = (morningShiftCount * morningRate) + (afternoonShiftCount * afternoonRate) + (nightShiftCount * nightRate);
+
+                double totalMoney = (morningShiftCount * morningRate) +
+                                    (afternoonShiftCount * afternoonRate) +
+                                    (nightShiftCount * nightRate);
+
                 int workingDays = morningShiftCount + afternoonShiftCount + nightShiftCount + plannedLeave + unplannedLeave + general;
+
                 employeeShift.setMorningShiftCount(morningShiftCount);
                 employeeShift.setAfternoonShiftCount(afternoonShiftCount);
                 employeeShift.setNightShiftCount(nightShiftCount);
@@ -233,13 +240,172 @@ public class EmployeeShiftService {
                 employeeShift.setUnplannedLeave(unplannedLeave);
                 employeeShift.setGeneral(general);
                 employeeShift.setWorkingDays(workingDays);
+
                 employeeShifts.add(employeeShift);
             }
+
             employeeShiftRepository.saveAll(employeeShifts);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+
+
+//    @Transactional
+//    public void saveShiftData(String month, int year, String departmentName, MultipartFile file) {
+//        // Fetch the department or create a new one if it doesn't exist
+//        Department department = departmentRepository.findByDepartmentName(departmentName)
+//                .orElseGet(() -> {
+//                    Department newDepartment = new Department();
+//                    newDepartment.setDepartmentName(departmentName);
+//                    return departmentRepository.save(newDepartment);
+//                });
+//
+//        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+//            Sheet sheet = workbook.getSheetAt(0);
+//            Iterator<Row> rows = sheet.iterator();
+//
+//            List<EmployeeShift> employeeShifts = new ArrayList<>();
+//
+//         // Deleting the previous shift data for this month, year, and department
+//      
+//            // Delete related data first
+//            employeeShiftRepository.deletePlannedLeavesByMonthYearAndDepartment(month, year, department.getId());
+//            employeeShiftRepository.deleteUnplannedLeavesByMonthYearAndDepartment(month, year, department.getId());
+//            employeeShiftRepository.deleteSubRestDaysByMonthYearAndDepartment(month, year, department.getId());
+//            employeeShiftRepository.deleteSundayShiftsByMonthYearAndDepartment(month, year, department.getId());
+//            employeeShiftRepository.deleteOnCallShiftsByMonthYearAndDepartment(month, year, department.getId());
+//            employeeShiftRepository.deleteWorkOffShiftsByMonthYearAndDepartment(month, year, department.getId());
+//            employeeShiftRepository.deleteByMonthYearAndDepartment(month, year, department.getId());
+//
+//            if (!rows.hasNext()) return; // Ensure there is at least one row
+//            Row datesRow = rows.next(); // Read the first row (dates)
+//
+//            if (!rows.hasNext()) return; // Ensure there is a second row
+//            Row dayNamesRow = rows.next(); // Read the second row (day names)
+//
+//            while (rows.hasNext()) {
+//                Row row = rows.next();
+//                if (row == null || row.getCell(0) == null || row.getCell(0).getCellType() != CellType.STRING) continue;
+//                
+//                // Check for empty or invalid employee name
+//                String employeeName = row.getCell(0).getStringCellValue().trim();
+//                if (employeeName.isEmpty() || INVALID_EMPLOYEE_NAMES.contains(employeeName)) continue;
+//
+//                // Check if employee already exists in the database
+//                Employee employee = employeeRepository.findByEmployeeNameAndDepartment(employeeName, department).orElse(null);
+//                if (employee == null) {
+//                    employee = new Employee();
+//                    employee.setEmployeeName(employeeName);
+//                    employee.setDepartment(department);
+//                    employee = employeeRepository.save(employee);
+//                }
+//
+//                EmployeeShift employeeShift = new EmployeeShift();
+//                employeeShift.setEmployee(employee);
+//                employeeShift.setMonth(month);
+//                employeeShift.setYear(year);
+//                employeeShift.setDepartment(department);
+//                int morningShiftCount = 0, afternoonShiftCount = 0, nightShiftCount = 0;
+//                int sundayCount = 0;
+//                int plannedLeave = 0;
+//                int unplannedLeave = 0;
+//                int general = 0;
+//                
+//                Map<String, String> sundayShifts = new HashMap<>();
+//
+//                boolean hasValidShift = false; // Flag to check for valid shifts
+//
+//                for (int i = 1; i < row.getLastCellNum(); i++) {
+//                    Cell cell = row.getCell(i);
+//                    if (cell != null && cell.getCellType() == CellType.STRING) {
+//                        String shiftType = cell.getStringCellValue().trim();
+//                        
+//                        String dateStr = getCellStringValue(datesRow.getCell(i));
+//                        String dayName = getCellStringValue(dayNamesRow.getCell(i));
+//
+//                        
+//                        boolean isWeekend = "Sat".equals(dayName) || "Sun".equals(dayName);
+//                        
+//                        if (VALID_SHIFT_CODES.contains(shiftType)) {
+//                            hasValidShift = true; 
+//
+//                            
+//                            if ("Sun".equals(dayName)) {
+//                                sundayCount++;
+//                                sundayShifts.put(dateStr, shiftType);
+//                            }
+//                            
+//                            if(Holiday_Date.contains(dateStr)) {
+//                            	employeeShift.setHoliday(dateStr);
+//                            } else if (!isWeekend) {
+//                                switch (shiftType) {
+//                                    case "M":
+//                                        morningShiftCount++;
+//                                        break;
+//                                    case "A":
+//                                        afternoonShiftCount++;
+//                                        break;
+//                                    case "N":
+//                                        nightShiftCount++;
+//                                        break;
+//                                }
+//                            }
+//                        }else {
+//                        	
+//                        	switch(shiftType) {
+//                        	case "P":
+//                        		employeeShift.getPlannedLeaveDates().add(dateStr);
+//                        		plannedLeave++;
+//                        		break;
+//                        	case "U":
+//                        		employeeShift.getUnplannedLeaveDates().add(dateStr);
+//                        		unplannedLeave++;
+//                        		break;
+//                        	case "C":
+//                        		if(!isWeekend) {
+//                        			general++;
+//                        		}
+//                        		break;
+//                        	case "G":
+//                        		if(!isWeekend) {
+//                        			general++;
+//                        			hasValidShift = true;
+//                        		}
+//                        		break;
+//                        	}
+//                        	
+//                        }
+//
+//                    }
+//                }
+//
+//                // Skip rows without valid shifts
+//                if (!hasValidShift) continue;
+//
+//                double morningRate = getRateForShift("Morning");
+//                double afternoonRate = getRateForShift("Afternoon");
+//                double nightRate = getRateForShift("Night");
+//                double totalMoney = (morningShiftCount * morningRate) + (afternoonShiftCount * afternoonRate) + (nightShiftCount * nightRate);
+//                int workingDays = morningShiftCount + afternoonShiftCount + nightShiftCount + plannedLeave + unplannedLeave + general;
+//                employeeShift.setMorningShiftCount(morningShiftCount);
+//                employeeShift.setAfternoonShiftCount(afternoonShiftCount);
+//                employeeShift.setNightShiftCount(nightShiftCount);
+//                employeeShift.setTotalMoney(totalMoney);
+//                employeeShift.setSundayCount(sundayCount);
+//                employeeShift.setSundayShifts(sundayShifts);
+//                employeeShift.setPlannedLeave(plannedLeave);
+//                employeeShift.setUnplannedLeave(unplannedLeave);
+//                employeeShift.setGeneral(general);
+//                employeeShift.setWorkingDays(workingDays);
+//                employeeShifts.add(employeeShift);
+//            }
+//            employeeShiftRepository.saveAll(employeeShifts);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     private String getCellStringValue(Cell cell) {
         if (cell.getCellType() == CellType.STRING) {

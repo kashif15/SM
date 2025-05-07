@@ -50,25 +50,25 @@ public class MasterEmployeeService {
         masterEmployeeRepository.saveAll(employees);
     }
 
-    // Compare shift data with the master list and return missing employees
-    public List<String> findMissingEmployees(String month, int year, String department) {
+    public List<String> findMissingEmployeeIds(String month, int year, String department) {
         // Fetch master list for the given month and year
         List<MasterEmployee> masterList = masterEmployeeRepository.findByMonthAndYear(month, year);
-        
-        // Get only employees whose sub-department matches the selected department
-        Set<String> masterEmployeeNames = masterList.stream()
+
+        // Filter master list for the selected department and collect EMP IDs
+        Set<String> masterEmpIds = masterList.stream()
             .filter(emp -> emp.getSubDepartment().equalsIgnoreCase(department))
-            .map(MasterEmployee::getEmployeeName)
+            .map(MasterEmployee::getEmployeeId)
             .collect(Collectors.toSet());
 
         // Fetch shift data for the given month, year, and department
         List<EmployeeShift> shiftData = employeeShiftRepository.findByMonthAndYearAndDepartment(month, year, department);
-        
-        // Find employees in shift data but missing in master list
+
+        // Return EMP IDs that exist in shift data but not in master list
         return shiftData.stream()
-            .map(shift -> shift.getEmployee().getEmployeeName())
-            .filter(name -> !masterEmployeeNames.contains(name)) // Missing employees
+            .map(shift -> shift.getEmployee().getEmployeeId())
+            .filter(empId -> !masterEmpIds.contains(empId)) // Missing employees
             .distinct()
             .collect(Collectors.toList());
     }
+
 }

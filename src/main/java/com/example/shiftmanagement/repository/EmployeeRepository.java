@@ -10,6 +10,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     // Existing method
     Optional<Employee> findByEmployeeNameIgnoreCase(String employeeName);
     
+    Optional<Employee> findByEmployeeIdAndDepartment(String employeeId, Department department);
+
+    
     // New method to find employee by name and department
     Optional<Employee> findByEmployeeNameAndDepartment(String employeeName, Department department);
 }
